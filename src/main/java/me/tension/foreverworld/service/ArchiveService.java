@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import me.tension.foreverworld.ForeverWorldPlugin;
+import me.tension.foreverworld.model.PlacementArea;
 import me.tension.foreverworld.model.SeasonRecord;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
@@ -60,16 +61,25 @@ public final class ArchiveService {
         return new Location(anchor.getWorld(), baseX, anchor.getY(), baseZ);
     }
 
+    public PlacementArea describePodArea(SeasonRecord archivedSeason, int archiveSlot, int spacing, int rowWidth) {
+        Location podBase = podBase(archivedSeason.archiveAnchor(), archiveSlot, spacing, rowWidth);
+        World world = podBase.getWorld();
+        int y = highestPadY(podBase) + 1;
+        return new PlacementArea(
+                "archive pod #" + archiveSlot,
+                world,
+                podBase.getBlockX() - 1,
+                y,
+                podBase.getBlockZ() - 1,
+                podBase.getBlockX() + 3,
+                y + 1,
+                podBase.getBlockZ() + 2
+        );
+    }
+
     private Location preparePad(Location base) {
         World world = base.getWorld();
-        int highestY = 0;
-        for (int x = 0; x <= 2; x++) {
-            for (int z = 0; z <= 1; z++) {
-                highestY = Math.max(highestY, world.getHighestBlockYAt(base.getBlockX() + x, base.getBlockZ() + z));
-            }
-        }
-
-        int y = highestY + 1;
+        int y = highestPadY(base) + 1;
         for (int x = -1; x <= 3; x++) {
             for (int z = -1; z <= 2; z++) {
                 Block floor = world.getBlockAt(base.getBlockX() + x, y - 1, base.getBlockZ() + z);
@@ -81,6 +91,17 @@ public final class ArchiveService {
         }
 
         return new Location(world, base.getBlockX(), y, base.getBlockZ());
+    }
+
+    private int highestPadY(Location base) {
+        World world = base.getWorld();
+        int highestY = 0;
+        for (int x = 0; x <= 2; x++) {
+            for (int z = 0; z <= 1; z++) {
+                highestY = Math.max(highestY, world.getHighestBlockYAt(base.getBlockX() + x, base.getBlockZ() + z));
+            }
+        }
+        return highestY;
     }
 
     private Chest createChest(Location location, Component name) {

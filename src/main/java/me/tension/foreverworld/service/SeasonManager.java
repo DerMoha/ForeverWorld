@@ -133,6 +133,18 @@ public final class SeasonManager {
         return plugin.getConfig().getBoolean("only-reset-managed-world-players", true);
     }
 
+    public boolean shouldCheckWorldGuardProtection() {
+        return plugin.getConfig().getBoolean("check-worldguard-protection", true);
+    }
+
+    public String getPlacementPolicy() {
+        return plugin.getConfig().getString("placement-policy", "abort").trim().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    public boolean shouldAbortOnPlacementIssues() {
+        return !"ignore".equals(getPlacementPolicy());
+    }
+
     public Location computeArchiveAnchor(Location oldSpawn) {
         World world = oldSpawn.getWorld();
         int x = oldSpawn.getBlockX() + getArchiveOffsetX();

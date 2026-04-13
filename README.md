@@ -10,12 +10,15 @@ ForeverWorld is a Paper plugin for season-style overworld resets. A reset moves 
 - Archives online player inventories and ender chest contents into labeled chest pods
 - Queues offline players so they are archived and moved on next join
 - Requires an explicit confirmation step before a reset runs
+- Scopes resets to one configured managed overworld
+- Lets admins dry-run placement and compatibility checks before confirming a reset
 
 ## Commands
 
 - `/season status` shows the current season and queued resets
 - `/season reset <season-name>` arms a reset
 - `/season confirm` runs the armed reset
+- `/season dryrun [season-name]` previews affected players, integrations, and placement issues
 
 Permission: `foreverworld.admin` (default: `op`)
 
@@ -42,13 +45,21 @@ archive-player-spacing: 6
 archive-row-width: 8
 spawn-platform-radius: 2
 confirmation-seconds: 60
+update-world-spawn: false
+only-reset-managed-world-players: true
+placement-policy: abort
+check-worldguard-protection: true
 ```
 
-- Leave `world-name` blank to use the first normal overworld.
+- Set `world-name` explicitly on every server, especially with Multiverse.
 - Plugin state is stored in `plugins/ForeverWorld/seasons.yml`.
+- `update-world-spawn` defaults to `false` so ForeverWorld does not compete with spawn-management plugins.
+- `placement-policy: abort` cancels the reset if the spawn platform or archive pods would overwrite occupied space.
+- If WorldGuard is installed and `check-worldguard-protection` is enabled, protected regions block the reset during dry-run and confirm.
 
 ## Notes
 
 - Archive pods are placed near the old season spawn using the configured offsets.
 - Player archive layout is controlled by `archive-player-spacing` and `archive-row-width`.
 - Offline resets persist until the affected player logs in.
+- Only players currently in the managed world are reset during a season rollover.

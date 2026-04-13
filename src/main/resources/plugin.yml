@@ -7,8 +7,18 @@ api-version: '1.21'
 commands:
   season:
     description: Manage ForeverWorld seasons.
-    usage: /season <status|reset|confirm>
+    usage: /season <status|reset|confirm|dryrun>
     permission: foreverworld.admin
+softdepend:
+  - Multiverse-Core
+  - WorldGuard
+  - Essentials
+  - EssentialsSpawn
+  - AuraSkills
+  - mcMMO
+  - PlaceholderAPI
+  - dynmap
+  - BlueMap
 permissions:
   foreverworld.admin:
     description: Allows managing season resets.

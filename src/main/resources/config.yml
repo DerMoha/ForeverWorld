@@ -8,3 +8,5 @@ spawn-platform-radius: 2
 confirmation-seconds: 60
 update-world-spawn: false
 only-reset-managed-world-players: true
+placement-policy: abort
+check-worldguard-protection: true
