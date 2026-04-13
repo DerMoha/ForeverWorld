@@ -1,0 +1,15 @@
+name: ForeverWorld
+version: 1.0.0-SNAPSHOT
+main: me.tension.foreverworld.ForeverWorldPlugin
+description: Season-style overworld resets with physical archives for players.
+author: tension
+api-version: '1.21'
+commands:
+  season:
+    description: Manage ForeverWorld seasons.
+    usage: /season <status|reset|confirm>
+    permission: foreverworld.admin
+permissions:
+  foreverworld.admin:
+    description: Allows managing season resets.
+    default: op

@@ -1,0 +1,8 @@
+world-name: ""
+season-distance-blocks: 50000
+archive-anchor-offset-x: 0
+archive-anchor-offset-z: 24
+archive-player-spacing: 6
+archive-row-width: 8
+spawn-platform-radius: 2
+confirmation-seconds: 60
