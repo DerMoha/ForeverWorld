@@ -10,3 +10,27 @@ update-world-spawn: false
 only-reset-managed-world-players: true
 placement-policy: abort
 check-worldguard-protection: true
+
+integrations:
+  placeholderapi:
+    register-expansion: true
+  essentialsx:
+    warn-on-spawn-conflict: true
+    player-reset-commands: []
+  auraskills:
+    player-reset-commands: []
+  mcmmo:
+    player-reset-commands: []
+  dynmap:
+    update-markers: true
+    marker-set-id: foreverworld
+    marker-set-label: ForeverWorld
+    current-marker-id: foreverworld-current
+    current-marker-label: CurrentSeasonSpawn
+    archive-marker-id-prefix: foreverworld-archive-
+    archive-marker-label-prefix: SeasonArchive
+    marker-icon: default
+  bluemap:
+    season-reset-commands: []
+  minecraft:
+    reset-advancements: true

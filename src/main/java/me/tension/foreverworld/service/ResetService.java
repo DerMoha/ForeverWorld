@@ -79,6 +79,7 @@ public final class ResetService {
             onlineProcessed++;
             trySetRespawn(player, resetPlan.newSpawn());
             player.sendMessage(Component.text("Season reset complete. Welcome to " + newSeasonName + "."));
+            integrationRegistry.handlePlayerReset(player, archivedSeason, nextSeason);
         }
 
         if (seasonManager.shouldUpdateWorldSpawn()) {
@@ -90,6 +91,7 @@ public final class ResetService {
                 .ifPresent(updated -> pendingResets.put(playerId, updated)));
 
         seasonManager.completeReset(archivedSeason, nextSeason, pendingResets);
+        integrationRegistry.handleSeasonReset(archivedSeason, nextSeason);
         return new ResetResult(archivedSeason, nextSeason, onlineProcessed, pendingResets.size(), resetPlan.affectedOnlinePlayers().size());
     }
 
@@ -101,6 +103,7 @@ public final class ResetService {
         for (int slot : resetPlan.archiveSlots().values()) {
             issues.addAll(findPlacementIssues(archiveService.describePodArea(archivedSeason, slot, resetPlan.spacing(), resetPlan.rowWidth())));
         }
+        issues.addAll(integrationRegistry.buildWarnings(seasonManager));
 
         return new ResetPreflight(
                 newSeasonName,
@@ -168,6 +171,7 @@ public final class ResetService {
         trySetRespawn(player, pendingReset.destination());
         seasonManager.clearPendingReset(player.getUniqueId());
         player.sendMessage(Component.text("Your items from season " + pendingReset.archivedSeasonName() + " were archived and you were moved to the current season."));
+        integrationRegistry.handlePlayerReset(player, archivedSeason, seasonManager.getCurrentSeason());
     }
 
     private boolean shouldResetPlayer(Player player) {
@@ -304,7 +308,9 @@ public final class ResetService {
                 : player.getAttribute(Attribute.MAX_HEALTH).getValue();
         player.setHealth(Math.min(maxHealth, player.getMaxHealth()));
 
-        resetAdvancements(player);
+        if (seasonManager.shouldResetVanillaAdvancements()) {
+            resetAdvancements(player);
+        }
     }
 
     private void resetAdvancements(Player player) {

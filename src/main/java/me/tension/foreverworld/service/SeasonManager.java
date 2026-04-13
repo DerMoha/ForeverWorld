@@ -145,6 +145,10 @@ public final class SeasonManager {
         return !"ignore".equals(getPlacementPolicy());
     }
 
+    public boolean shouldResetVanillaAdvancements() {
+        return plugin.getConfig().getBoolean("integrations.minecraft.reset-advancements", true);
+    }
+
     public Location computeArchiveAnchor(Location oldSpawn) {
         World world = oldSpawn.getWorld();
         int x = oldSpawn.getBlockX() + getArchiveOffsetX();

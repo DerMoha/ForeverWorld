@@ -25,6 +25,7 @@ public final class ForeverWorldPlugin extends JavaPlugin {
 
         this.integrationRegistry = new IntegrationRegistry(this);
         this.integrationRegistry.initialize();
+        this.integrationRegistry.registerPlaceholderExpansion(seasonManager);
 
         ArchiveService archiveService = new ArchiveService(this);
         this.resetService = new ResetService(this, seasonManager, archiveService, integrationRegistry);
