@@ -1,8 +1,8 @@
 package me.tension.foreverworld.service;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -43,66 +43,46 @@ public final class ResetService {
         SeasonRecord archivedSeason = currentSeason.archived(archiveAnchor, now);
         SeasonRecord nextSeason = SeasonRecord.current(currentSeason.index() + 1, newSeasonName, newSpawn, now);
 
-        Collection<? extends Player> onlinePlayers = Bukkit.getOnlinePlayers();
-        OfflinePlayer[] knownPlayers = Bukkit.getOfflinePlayers();
-        Map<UUID, Integer> slots = seasonManager.assignArchiveSlots(java.util.List.of(knownPlayers));
+        List<Player> affectedOnlinePlayers = Bukkit.getOnlinePlayers().stream()
+                .map(Player.class::cast)
+                .filter(this::shouldResetPlayer)
+                .toList();
+        Map<UUID, Integer> slots = seasonManager.assignArchiveSlots(affectedOnlinePlayers.stream()
+                .map(player -> (OfflinePlayer) player)
+                .toList());
         int spacing = seasonManager.getArchivePlayerSpacing();
         int rowWidth = seasonManager.getArchiveRowWidth();
+        Map<UUID, PendingReset> pendingResets = new HashMap<>();
+        int onlineProcessed = 0;
 
-        for (Player player : onlinePlayers) {
+        for (Player player : affectedOnlinePlayers) {
             int slot = slots.getOrDefault(player.getUniqueId(), 0);
-            archiveService.archivePlayer(player, archivedSeason, slot, spacing, rowWidth);
+            ItemStack[] carriedContents = cloneContents(player.getInventory().getContents());
+            ItemStack[] enderContents = cloneContents(player.getEnderChest().getContents());
+            if (!player.teleport(newSpawn)) {
+                pendingResets.put(player.getUniqueId(), createPendingReset(player, archivedSeason, newSpawn, slot));
+                plugin.getLogger().warning("Teleport failed for " + player.getName() + " during season reset. Pending reset retained.");
+                player.sendMessage(Component.text("Your season reset was prepared, but teleport failed. It will be retried when you rejoin."));
+                continue;
+            }
+
+            archiveService.archivePlayerContents(player.getName(), carriedContents, enderContents, archivedSeason, slot, spacing, rowWidth);
             resetPlayerState(player);
-        }
-
-        worldSpawn(newSpawn);
-
-        for (Player player : onlinePlayers) {
-            player.teleport(newSpawn);
+            onlineProcessed++;
             trySetRespawn(player, newSpawn);
             player.sendMessage(Component.text("Season reset complete. Welcome to " + newSeasonName + "."));
         }
 
-        Map<UUID, PendingReset> pendingResets = new HashMap<>();
-        Set<UUID> onlineIds = new HashSet<>();
-        for (Player player : onlinePlayers) {
-            onlineIds.add(player.getUniqueId());
+        if (seasonManager.shouldUpdateWorldSpawn()) {
+            worldSpawn(newSpawn);
         }
 
-        for (OfflinePlayer player : knownPlayers) {
-            UUID playerId = player.getUniqueId();
-            if (onlineIds.contains(playerId)) {
-                continue;
-            }
-
-            PendingReset existing = seasonManager.getPendingReset(playerId).orElse(null);
-            if (existing != null) {
-                pendingResets.put(playerId, existing.withDestination(newSpawn));
-                continue;
-            }
-
-            int slot = slots.getOrDefault(playerId, pendingResets.size());
-            PendingReset pendingReset = new PendingReset(
-                    playerId,
-                    player.getName() == null ? playerId.toString() : player.getName(),
-                    archivedSeason.index(),
-                    archivedSeason.name(),
-                    archivedSeason.worldName(),
-                    slot,
-                    archivedSeason.archiveX(),
-                    archivedSeason.archiveY(),
-                    archivedSeason.archiveZ(),
-                    newSpawn.getX(),
-                    newSpawn.getY(),
-                    newSpawn.getZ(),
-                    newSpawn.getYaw(),
-                    newSpawn.getPitch()
-            );
-            pendingResets.put(playerId, pendingReset);
-        }
+        seasonManager.getPendingResetIds().forEach(playerId -> seasonManager.getPendingReset(playerId)
+                .map(existing -> existing.withDestination(newSpawn))
+                .ifPresent(updated -> pendingResets.put(playerId, updated)));
 
         seasonManager.completeReset(archivedSeason, nextSeason, pendingResets);
-        return new ResetResult(archivedSeason, nextSeason, onlinePlayers.size(), pendingResets.size());
+        return new ResetResult(archivedSeason, nextSeason, onlineProcessed, pendingResets.size(), affectedOnlinePlayers.size());
     }
 
     public void processPendingReset(Player player, PendingReset pendingReset) {
@@ -122,18 +102,62 @@ public final class ResetService {
                 0
         );
 
-        archiveService.archivePlayer(
-                player,
+        ItemStack[] carriedContents = cloneContents(player.getInventory().getContents());
+        ItemStack[] enderContents = cloneContents(player.getEnderChest().getContents());
+        if (!player.teleport(pendingReset.destination())) {
+            plugin.getLogger().warning("Teleport failed for pending reset player " + player.getName() + ". Leaving reset queued.");
+            player.sendMessage(Component.text("Your season reset is still pending because teleport failed. Please contact staff."));
+            return;
+        }
+        archiveService.archivePlayerContents(
+                player.getName(),
+                carriedContents,
+                enderContents,
                 archivedSeason,
                 pendingReset.archiveSlot(),
                 seasonManager.getArchivePlayerSpacing(),
                 seasonManager.getArchiveRowWidth()
         );
         resetPlayerState(player);
-        player.teleport(pendingReset.destination());
         trySetRespawn(player, pendingReset.destination());
         seasonManager.clearPendingReset(player.getUniqueId());
         player.sendMessage(Component.text("Your items from season " + pendingReset.archivedSeasonName() + " were archived and you were moved to the current season."));
+    }
+
+    private boolean shouldResetPlayer(Player player) {
+        if (!seasonManager.shouldOnlyResetManagedWorldPlayers()) {
+            return true;
+        }
+        return seasonManager.isManagedWorld(player.getWorld());
+    }
+
+    private PendingReset createPendingReset(OfflinePlayer player, SeasonRecord archivedSeason, Location newSpawn, int slot) {
+        UUID playerId = player.getUniqueId();
+        return new PendingReset(
+                playerId,
+                player.getName() == null ? playerId.toString() : player.getName(),
+                archivedSeason.index(),
+                archivedSeason.name(),
+                archivedSeason.worldName(),
+                slot,
+                archivedSeason.archiveX(),
+                archivedSeason.archiveY(),
+                archivedSeason.archiveZ(),
+                newSpawn.getX(),
+                newSpawn.getY(),
+                newSpawn.getZ(),
+                newSpawn.getYaw(),
+                newSpawn.getPitch()
+        );
+    }
+
+    private ItemStack[] cloneContents(ItemStack[] contents) {
+        ItemStack[] cloned = new ItemStack[contents.length];
+        for (int index = 0; index < contents.length; index++) {
+            ItemStack stack = contents[index];
+            cloned[index] = stack == null ? null : stack.clone();
+        }
+        return cloned;
     }
 
     private void ensureSpawnPlatform(Location spawn) {
@@ -200,6 +224,7 @@ public final class ResetService {
         }
     }
 
-    public record ResetResult(SeasonRecord archivedSeason, SeasonRecord newSeason, int onlineProcessed, int pendingPlayers) {
+    public record ResetResult(SeasonRecord archivedSeason, SeasonRecord newSeason, int onlineProcessed, int pendingPlayers,
+                              int affectedOnlinePlayers) {
     }
 }

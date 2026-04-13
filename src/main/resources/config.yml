@@ -6,3 +6,5 @@ archive-player-spacing: 6
 archive-row-width: 8
 spawn-platform-radius: 2
 confirmation-seconds: 60
+update-world-spawn: false
+only-reset-managed-world-players: true

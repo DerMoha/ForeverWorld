@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import me.tension.foreverworld.ForeverWorldPlugin;
 import me.tension.foreverworld.model.PendingReset;
@@ -48,19 +49,27 @@ public final class SeasonManager {
     }
 
     public World resolveManagedWorld() {
-        String configuredWorld = plugin.getConfig().getString("world-name", "").trim();
-        if (!configuredWorld.isEmpty()) {
-            World world = plugin.getServer().getWorld(configuredWorld);
-            if (world == null) {
-                throw new IllegalStateException("Configured world '" + configuredWorld + "' is not loaded");
-            }
-            return world;
+        String configuredWorld = getManagedWorldName();
+        World world = plugin.getServer().getWorld(configuredWorld);
+        if (world == null) {
+            throw new IllegalStateException("Configured world '" + configuredWorld + "' is not loaded");
         }
+        if (world.getEnvironment() != Environment.NORMAL) {
+            throw new IllegalStateException("Configured world '" + configuredWorld + "' is not a normal overworld");
+        }
+        return world;
+    }
 
-        return plugin.getServer().getWorlds().stream()
-                .filter(world -> world.getEnvironment() == Environment.NORMAL)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("No overworld is loaded"));
+    public String getManagedWorldName() {
+        String configuredWorld = plugin.getConfig().getString("world-name", "").trim();
+        if (configuredWorld.isEmpty()) {
+            throw new IllegalStateException("Config option 'world-name' must be set to the managed overworld");
+        }
+        return configuredWorld;
+    }
+
+    public boolean isManagedWorld(World world) {
+        return world != null && world.getName().equals(getManagedWorldName());
     }
 
     public SeasonRecord getCurrentSeason() {
@@ -77,6 +86,10 @@ public final class SeasonManager {
 
     public Optional<PendingReset> getPendingReset(UUID playerId) {
         return Optional.ofNullable(pendingResets.get(playerId));
+    }
+
+    public Set<UUID> getPendingResetIds() {
+        return Set.copyOf(pendingResets.keySet());
     }
 
     public void clearPendingReset(UUID playerId) {
@@ -110,6 +123,14 @@ public final class SeasonManager {
 
     public int getConfirmationSeconds() {
         return Math.max(10, plugin.getConfig().getInt("confirmation-seconds", 60));
+    }
+
+    public boolean shouldUpdateWorldSpawn() {
+        return plugin.getConfig().getBoolean("update-world-spawn", false);
+    }
+
+    public boolean shouldOnlyResetManagedWorldPlayers() {
+        return plugin.getConfig().getBoolean("only-reset-managed-world-players", true);
     }
 
     public Location computeArchiveAnchor(Location oldSpawn) {

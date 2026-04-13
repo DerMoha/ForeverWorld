@@ -14,7 +14,6 @@ import org.bukkit.block.Chest;
 import org.bukkit.block.Sign;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
 
 public final class ArchiveService {
     private final ForeverWorldPlugin plugin;
@@ -24,20 +23,33 @@ public final class ArchiveService {
     }
 
     public void archivePlayer(Player player, SeasonRecord archivedSeason, int archiveSlot, int spacing, int rowWidth) {
+        archivePlayerContents(
+                player.getName(),
+                player.getInventory().getContents(),
+                player.getEnderChest().getContents(),
+                archivedSeason,
+                archiveSlot,
+                spacing,
+                rowWidth
+        );
+    }
+
+    public void archivePlayerContents(String playerName, ItemStack[] inventoryContents, ItemStack[] enderChestContents,
+                                      SeasonRecord archivedSeason, int archiveSlot, int spacing, int rowWidth) {
         Location podBase = podBase(archivedSeason.archiveAnchor(), archiveSlot, spacing, rowWidth);
         Location floorBase = preparePad(podBase);
 
         List<ItemStack> carriedItems = new ArrayList<>();
-        carriedItems.addAll(Arrays.asList(player.getInventory().getContents()));
-        List<ItemStack> enderItems = Arrays.asList(player.getEnderChest().getContents());
+        carriedItems.addAll(Arrays.asList(inventoryContents));
+        List<ItemStack> enderItems = Arrays.asList(enderChestContents);
 
-        Chest chestOne = createChest(floorBase.clone().add(0, 0, 0), Component.text(player.getName() + " - carried 1"));
-        Chest chestTwo = createChest(floorBase.clone().add(1, 0, 0), Component.text(player.getName() + " - carried 2"));
-        Chest chestThree = createChest(floorBase.clone().add(2, 0, 0), Component.text(player.getName() + " - ender"));
+        Chest chestOne = createChest(floorBase.clone().add(0, 0, 0), Component.text(playerName + " - carried 1"));
+        Chest chestTwo = createChest(floorBase.clone().add(1, 0, 0), Component.text(playerName + " - carried 2"));
+        Chest chestThree = createChest(floorBase.clone().add(2, 0, 0), Component.text(playerName + " - ender"));
 
         fillSequentially(List.of(chestOne, chestTwo), carriedItems);
         fillSequentially(List.of(chestThree), enderItems);
-        placeMarkerSign(floorBase.clone().add(0, 0, 1), player.getName(), archivedSeason.name(), archiveSlot);
+        placeMarkerSign(floorBase.clone().add(0, 0, 1), playerName, archivedSeason.name(), archiveSlot);
     }
 
     private Location podBase(Location anchor, int slot, int spacing, int rowWidth) {

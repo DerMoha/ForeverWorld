@@ -65,8 +65,9 @@ public final class SeasonCommand implements CommandExecutor, TabCompleter {
                     "Season reset complete. Archived " + result.archivedSeason().name()
                             + ", started " + result.newSeason().name()
                             + ", processed " + result.onlineProcessed()
-                            + " online players, and queued " + result.pendingPlayers()
-                            + " offline players."
+                            + " of " + result.affectedOnlinePlayers()
+                            + " managed-world online players, and now have " + result.pendingPlayers()
+                            + " pending resets."
             ));
             return true;
         }
